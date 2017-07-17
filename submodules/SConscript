@@ -121,10 +121,10 @@ l_numLibs = [ 'FastGL/fastgl.cpp' ]
 for l_lib in l_numLibs:
   env.sources.append( env.Object( l_lib,
                                   CXXFLAGS = env['CXXFLAGS']+
-                                             '-Wno-error'+
-                                             '-Wno-all'+
-                                             '-Wno-shadow'+
-                                             '-Wno-unused-variable' ) )
+                                             ['-Wno-error']+
+                                             ['-Wno-all']+
+                                             ['-Wno-shadow']+
+                                             ['-Wno-unused-variable'] ) )
 
 # compile default soruces
 for l_object in l_objects:
