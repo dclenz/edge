@@ -1,15 +1,20 @@
 [submodule "submodules/pugixml"]
 	path = submodules/pugixml
 	url = https://github.com/zeux/pugixml.git
+	ignore = dirty
 [submodule "submodules/easylogging"]
 	path = submodules/easylogging
 	url = https://github.com/easylogging/easyloggingpp.git
+	ignore = dirty
 [submodule "submodules/libxsmm"]
 	path = submodules/libxsmm
 	url = https://github.com/hfp/libxsmm.git
+	ignore = dirty
 [submodule "submodules/Catch"]
 	path = submodules/Catch
 	url = https://github.com/philsquared/Catch.git
+	ignore = dirty
 [submodule "submodules/moab"]
 	path = submodules/moab
 	url = https://bitbucket.org/fathomteam/moab.git
+	ignore = dirty
