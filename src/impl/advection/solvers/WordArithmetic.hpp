@@ -16,7 +16,7 @@ struct w_pair{
 };
 
 // Mantissa of output will have a 1 in bit 15 (bit 16 is sign)
-w_pair f2w(double f){
+w_pair f2w(float f){
 	w_pair w = {0, 0};
 
 	// may need some finesse here - this violates C's strict aliasing rule, which says (generally)
@@ -30,7 +30,7 @@ w_pair f2w(double f){
 	// another option - type punning with unions should be allowed, however the value retrieved is
 	// said to be unspecified (not undefined). However, the case where both members of a union
 	// have the same size seems to be the safest, which is the case here.
-	union {float _f; uint32_t i32;} u = {(float)f};
+	union {float _f; uint32_t i32;} u = {f};
 	uint32_t f_b = u.i32;
 
 	// unbiased exponents of finite floats lie in range 0 <--> 254
