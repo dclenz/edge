@@ -72,6 +72,13 @@ w_pair w_add(w_pair a, w_pair b){
 
 	// Guaranteed to be nonnegative
 	int16_t e_diff = a.e - b.e;
+	// if( e_diff > 14){
+	// 	printf("WARNING: e_diff > 14 (add)\n");
+	// 	printf("e_diff = %i\n", e_diff);
+	// 	printf("%f\n", w2f(a));
+	// 	printf("%f\n", w2f(b));
+	// }
+
 
 	// Tests for overflow
 	// Worthwhile to consider more efficient tests
@@ -84,28 +91,22 @@ w_pair w_add(w_pair a, w_pair b){
 		// __builtin_add_overflow stores sum in r.m during test
 		r.e = a.e;
 	}
-	//printf("%i\n", e_diff);
+
+	// if( e_diff > 14 )
+	// 	printf("%f\n\n", w2f(r));
+
 
 	return r;
 }
 
-// Variable truncation from 32 bits
+// Fixed truncation from 32 bits (no shifting before multiplication)
 w_pair w_mul(w_pair a, w_pair b){
 	w_pair r;
 
-	// Ensure that a has exponent at least as large as b
-	if( a.e < b.e ){
-		w_pair temp = a;
-		a = b;
-		b = temp;
-	}
-
-	// Guaranteed to be nonnegative
-	int16_t e_diff = a.e - b.e;
-
 	// Final bit shift truncates 15 bits
 	// Extra -14 due to both operands having a scale factor of 2^-14
-	r.e = a.e * 2 + (15 - e_diff - 14);
+	// r.e = a.e * 2 + (15 - e_diff - 14);
+	r.e = a.e + b.e + 15 - 14;
 
 	// There should be a better way to do this
 	// Almost half of the time spent in multiplication is wasted
@@ -115,10 +116,13 @@ w_pair w_mul(w_pair a, w_pair b){
 	int16_t x;
 	am = (int32_t)a.m;
 	bm = (int32_t)b.m;
-	bm >>= e_diff;
-	rm = (int32_t)(am*bm);
+	rm = (am*bm);
 
-	zm = rm >> (15 - e_diff);
+	// print_bits(4, &rm);
+	// printf("\n");
+
+	// the addition here rounds half toward +inf
+	zm = (rm + 0x00004000) >> 15;
 	x = zm & 0x0000FFFF;
 
 	r.m = x;
