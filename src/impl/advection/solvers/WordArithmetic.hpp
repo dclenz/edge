@@ -10,103 +10,115 @@
 
 using namespace std;
 
-struct w_pair{
-	int16_t m;
-	int8_t e;
+union word
+{
+	struct word_w16 {
+		int e : 8;
+		int s : 8;
+		int m : 16;
+	} w16;
+
+	struct word_m24 {
+		int e: 8;
+		int m : 24;
+	} w24;
+
+	int32_t word_field;
 };
 
 // Mantissa of output will have a 1 in bit 15 (bit 16 is sign)
-w_pair f2w(float f){
-	w_pair w = {0, 0};
+word f2w(float f){
+	word w;
 
-	// may need some finesse here - this violates C's strict aliasing rule, which says (generally)
-	// that objects can't be referenced by lvalues of different types. An exception to this
-	// is character types; that is, I could cast f to a char array. Unfortunately, then I would 
-	// have to loop through the array to for each of my bit operations. Shifts also become hard.
-	// Should strict aliasing be enforced? Or go for something more direct?
-	
-	// uint32_t f_b = *(uint32_t*)&f;
-
-	// another option - type punning with unions should be allowed, however the value retrieved is
-	// said to be unspecified (not undefined). However, the case where both members of a union
-	// have the same size seems to be the safest, which is the case here.
+	// Get float into int format
 	union {float _f; uint32_t i32;} u = {f};
 	uint32_t f_b = u.i32;
 
-	// unbiased exponents of finite floats lie in range 0 <--> 254
-	w.e = ((f_b & 0x7F800000) >> 23) - 127;
-	if( w.e == -127){
-		w.e = 0;
-		return w;	// If w.e == -127, the float was 0, so return 0.
+	w.w16.e = ((f_b & 0x7F800000) >> 23) - 127;
+	if( w.w16.e == -127){
+		w.w16.e = 0;
+		w.w24.m = 0;
+		return w;	// If w.w16.e == -127, the float was 0 (or denormalized), so return 0.
 	}
 
-	// extract mantissa, add implicit bit & round, then truncate
-	int16_t mantissa = ((f_b & 0x007FFFFF) + 0x00800100) >> (8 + 1);
+	// ********************************************************
 
-	// Adjust sign 
-	// NOTE: Multiplication (or similar) is necessary to ensure that
-	// 		 the two's complement is computed
-	if ( f_b & 0x80000000 )
-		w.m = -1 * mantissa;
+	// ************************
+	// **  Cast to 16b int
+	// ************************
+
+	// // extract mantissa, add implicit bit & round, then truncate
+	// int16_t mantissa = ((f_b & 0x007FFFFF) + 0x00800100) >> (8 + 1);
+
+	// // Adjust sign 
+	// // NOTE: Multiplication (or similar) is necessary to ensure that
+	// // 		 the two's complement is computed
+	// if ( f_b & 0x80000000 )
+	// 	w.w16.m = -1 * mantissa;
+	// else
+	// 	w.w16.m = mantissa;
+	// w.w16.s = 0;
+
+	// ********************************************************
+
+	// *************************
+	// **  Cast to 24b int
+	// *************************
+
+	int32_t mantissa = ((f_b & 0x007FFFFF) + 0x00800000) >> 1;	// Would rounding (instead of truncating) help here? probably doesn't matter
+	if (f_b & 0x80000000){
+		w.w24.m = -1 * mantissa;
+	}
 	else
-		w.m = mantissa;
+		w.w24.m = mantissa;
 
-//	printf("%f\n", f);
+	// ********************************************************
 
 	return w;
 }
 
-float w2f(w_pair w){
-	return w.m*pow(2, w.e - 14);
+float w2f(word w){
+	return w.w24.m*pow(2, w.w24.e - 14 - 8);
+//	return w.w16.m*pow(2, w.w16.e - 14);
 }
 
-w_pair w_add(w_pair a, w_pair b){
-	w_pair r;
+word w_add(word a, word b){
+	word r;
 
 	// Ensure that a has exponent at least as large as b
-	if( a.e < b.e ){
-		w_pair temp = a;
+	if( a.w16.e < b.w16.e ){
+		word temp = a;
 		a = b;
 		b = temp;
 	}
 
 	// Guaranteed to be nonnegative
-	int16_t e_diff = a.e - b.e;
-	// if( e_diff > 14){
-	// 	printf("WARNING: e_diff > 14 (add)\n");
-	// 	printf("e_diff = %i\n", e_diff);
-	// 	printf("%f\n", w2f(a));
-	// 	printf("%f\n", w2f(b));
-	// }
+	int16_t e_diff = a.w16.e - b.w16.e;
 
-
-	// Tests for overflow
-	// Worthwhile to consider more efficient tests
-	// Also, builtin fxn may not be portable to icc
-	if( __builtin_add_overflow(a.m, b.m >> e_diff, &r.m) ){
-		r.m = (a.m >> 1) + (b.m >> (e_diff + 1));
-		r.e = a.e + 1;
-	}
-	else{
-		// __builtin_add_overflow stores sum in r.m during test
-		r.e = a.e;
+	// Warning: No rounding before the (eventual?)
+	// truncation to 16 bits
+	r.w24.e = 0;
+	r.w24.m = (a.w24.m) + (b.w24.m >> (e_diff));
+	if (((r.w16.m^a.w16.m)&(r.w16.m^b.w16.m))>>15){ // If the addition overflowed
+		r.w24.m >>= 1;								// Then recover the 
+		r.w24.m ^= 0x800000;						//		overflowed bit (discarding low bit)
+		r.w24.e = 1;								// And increment exponent
 	}
 
-	// if( e_diff > 14 )
-	// 	printf("%f\n\n", w2f(r));
-
+	r.w24.e += a.w24.e;								// Add in larger exponent
 
 	return r;
 }
 
-// Fixed truncation from 32 bits (no shifting before multiplication)
-w_pair w_mul(w_pair a, w_pair b){
-	w_pair r;
+
+/// Fixed truncation from 32 bits (no shifting before multiplication)
+word w_mul(word a, word b){
+	word r;
 
 	// Final bit shift truncates 15 bits
 	// Extra -14 due to both operands having a scale factor of 2^-14
 	// r.e = a.e * 2 + (15 - e_diff - 14);
-	r.e = a.e + b.e + 15 - 14;
+	r.w16.e = a.w16.e + b.w16.e + 15 - 14;
 
 	// There should be a better way to do this
 	// Almost half of the time spent in multiplication is wasted
@@ -114,8 +126,8 @@ w_pair w_mul(w_pair a, w_pair b){
 	//r.m = (((int32_t)a.m * (int32_t)(b.m >> e_diff)) >> 16 ) & 0x0000FFFF;
 	int32_t am, bm, rm, zm;
 	int16_t x;
-	am = (int32_t)a.m;
-	bm = (int32_t)b.m;
+	am = (int32_t)a.w16.m;
+	bm = (int32_t)b.w16.m;
 	rm = (am*bm);
 
 	// print_bits(4, &rm);
@@ -125,7 +137,7 @@ w_pair w_mul(w_pair a, w_pair b){
 	zm = (rm + 0x00004000) >> 15;
 	x = zm & 0x0000FFFF;
 
-	r.m = x;
+	r.w16.m = x;
 
 	return r;
 }
