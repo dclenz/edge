@@ -19,7 +19,7 @@ union word
 	} w16;
 
 	struct word_m24 {
-		int e: 8;
+		int e : 8;
 		int m : 24;
 	} w24;
 
@@ -109,7 +109,6 @@ word w_add(word a, word b){
 
 	return r;
 }
-
 
 /// Fixed truncation from 32 bits (no shifting before multiplication)
 word w_mul(word a, word b){
