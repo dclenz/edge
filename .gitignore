@@ -3,3 +3,4 @@ config.log
 .sconf_temp/
 build/
 ghill_2d_wf/
+adv_tmpl

@@ -14,7 +14,7 @@ union word
 {
 	struct word_w16 {
 		int e : 8;
-		int s : 8;
+		unsigned int s : 8;
 		int m : 16;
 	} w16;
 
@@ -25,6 +25,44 @@ union word
 
 	int32_t word_field;
 };
+
+// Little Endian
+void print_bits(size_t const size, void const * const ptr)
+{
+    unsigned char *b = (unsigned char*) ptr;
+    unsigned char byte;
+    int i, j;
+
+    for (i=size-1;i>=0;i--)
+    {
+        for (j=7;j>=0;j--)
+        {
+            byte = (b[i] >> j) & 1;
+            printf("%u", byte);
+        }
+        printf(" ");
+    }
+    puts("");
+}
+
+// Big Endian (or, just prints bits in the order they're stored in memory)
+void print_bits_BE(size_t const size, void const * const ptr)
+{
+    unsigned char *b = (unsigned char*) ptr;
+    unsigned char byte;
+    unsigned int i, j;
+
+    for (i=0;i<=size-1;i++)
+    {
+        for (j=0;j<=7;j++)
+        {
+            byte = (b[i] >> j) & 1;
+            printf("%u", byte);
+        }
+        printf(" ");
+    }
+    puts("");
+}
 
 // Mantissa of output will have a 1 in bit 15 (bit 16 is sign)
 word f2w(float f){
@@ -79,7 +117,7 @@ word f2w(float f){
 
 float w2f(word w){
 	return w.w24.m*pow(2, w.w24.e - 14 - 8);
-//	return w.w16.m*pow(2, w.w16.e - 14);
+	// return w.w16.m*pow(2, w.w16.e - 14);
 }
 
 word w_add(word a, word b){
@@ -124,19 +162,34 @@ word w_mul(word a, word b){
 	// Consider _mm_mulhi_pi16 (or modern equivalent) in the future?
 	//r.m = (((int32_t)a.m * (int32_t)(b.m >> e_diff)) >> 16 ) & 0x0000FFFF;
 	int32_t am, bm, rm, zm;
-	int16_t x;
+	int32_t x;
 	am = (int32_t)a.w16.m;
 	bm = (int32_t)b.w16.m;
-	rm = (am*bm);
+
+	// ******* No Scratch Bits **********
+	// rm = (am*bm);
+	// **********************************
+	// *****
+	// ******** OR
+	// *****
+	// ******* With Scratch Bits ********
+	uint16_t as, bs;
+	as = (uint16_t)a.w16.s;
+	bs = (uint16_t)b.w16.s;
+	rm = (am*bm) + ((am*bs)>>8) + ((bm*as)>>8);
+	// **********************************
 
 	// print_bits(4, &rm);
 	// printf("\n");
 
-	// the addition here rounds half toward +inf
-	zm = (rm + 0x00004000) >> 15;
-	x = zm & 0x0000FFFF;
 
-	r.w16.m = x;
+	// Changed for storage into 24b m
+	//
+	// the addition here rounds half toward +inf
+	zm = (rm + 0x00000040) >> 7;
+	x = zm & 0x00FFFFFF;
+
+	r.w24.m = x;
 
 	return r;
 }

@@ -62,11 +62,20 @@ class edge::advection::solvers::FiniteVolume {
         for( int_md l_mode = 0; l_mode < N_ELEMENT_MODES; l_mode++ ) {
 #pragma omp simd
           for( int_cfr l_run = 0; l_run < N_CRUNS; l_run++ ) {
+            // o_tInt[l_element][0][l_mode][l_run] = i_dT*i_dofs[l_element][0][l_mode][l_run];
             o_tInt[l_element][0][l_mode][l_run] = w2f(w_mul(
                                                             f2w( i_dT), 
                                                             f2w( i_dofs[l_element][0][l_mode][l_run])
                                                             )
                                                       );
+
+            
+            // printf("i_dT:      %.9f\n", i_dT);
+            // printf("i_dofs:    %.9f\n", i_dofs[l_element][0][l_mode][l_run]);
+            // printf("prod:      %.9f\n", i_dT*i_dofs[l_element][0][l_mode][l_run]);
+            // printf("approx:    %.9f\n", o_tInt[l_element][0][l_mode][l_run]);
+            // printf("Absolute:  %.9f\n", i_dT*i_dofs[l_element][0][l_mode][l_run] - o_tInt[l_element][0][l_mode][l_run]);
+            // printf("Relative:  %.9f\n\n", (i_dT*i_dofs[l_element][0][l_mode][l_run] - o_tInt[l_element][0][l_mode][l_run])/(i_dT*i_dofs[l_element][0][l_mode][l_run]));
           }
         }
       }
@@ -106,7 +115,7 @@ class edge::advection::solvers::FiniteVolume {
               // printf("i_fluxSolvers[l_el][l_fa] = %f\n", i_fluxSolvers[l_el][l_fa]);
               // printf("i_tInt[l_el][0][0][l_run] = %f\n", i_tInt[l_el][0][0][l_run]);
               // printf("io_dofs[l_el][0][0][l_run] = %f\n\n", io_dofs[l_el][0][0][l_run]);
-              //io_dofs[l_el][0][0][l_run] += i_fluxSolvers[l_el][l_fa] * i_tInt[l_el][0][0][l_run];
+              // io_dofs[l_el][0][0][l_run] += i_fluxSolvers[l_el][l_fa] * i_tInt[l_el][0][0][l_run];
               io_dofs[l_el][0][0][l_run] = w2f( w_add(
                                                       f2w( io_dofs[l_el][0][0][l_run]), 
                                                       w_mul(
@@ -119,7 +128,7 @@ class edge::advection::solvers::FiniteVolume {
               // printf("i_fluxSolvers[l_el][C_ENT[T_SDISC.ELEMENT].N_FACES+l_fa] = %f\n", i_fluxSolvers[l_el][C_ENT[T_SDISC.ELEMENT].N_FACES+l_fa]);
               // printf("i_tInt[l_neigh][0][0][l_run] = %f\n", i_tInt[l_neigh][0][0][l_run]);
               // printf("io_dofs[l_el][0][0][l_run] = %f\n\n", io_dofs[l_el][0][0][l_run]);
-              // //io_dofs[l_el][0][0][l_run] += i_fluxSolvers[l_el][C_ENT[T_SDISC.ELEMENT].N_FACES+l_fa] * i_tInt[l_neigh][0][0][l_run];
+              // io_dofs[l_el][0][0][l_run] += i_fluxSolvers[l_el][C_ENT[T_SDISC.ELEMENT].N_FACES+l_fa] * i_tInt[l_neigh][0][0][l_run];
 
               io_dofs[l_el][0][0][l_run] = w2f( w_add(
                                                       f2w( io_dofs[l_el][0][0][l_run]), 
