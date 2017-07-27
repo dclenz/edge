@@ -263,6 +263,14 @@ for l_enorm in ['l1', 'l2', 'linf']:
                               marker=l_style['markers'][l_char[l_enorm][l_config]['order']],
                               color=l_style['color'][l_char[l_enorm][l_config]['cfr']]  )
 
+  # output data to file
+  outfilename = "adv_line/xy_data_" + str(l_enorm)
+  outfile = open(outfilename, 'w')
+  plotdata = matplotlib.pyplot.gca().get_lines()[0].get_xydata()
+  for pair in plotdata:
+    outfile.write("%s\t\t%s\n" % (pair[0], pair[1]))
+  outfile.close()
+
   # add infors
   matplotlib.pyplot.title( l_enorm )
   l_nCols = col=(len(l_yVals[l_enorm])/60+1)
