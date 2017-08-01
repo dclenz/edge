@@ -26,7 +26,7 @@
 #include <limits>
 #include <cassert>
 #include "constants.hpp"
-#include "WordArithmetic.hpp"
+#include "WordArithmetic2.hpp"
 
 namespace edge {
   namespace advection {
@@ -58,24 +58,23 @@ class edge::advection::solvers::FiniteVolume {
       (void) __builtin_assume_aligned(o_tInt, ALIGNMENT.ELEMENT_MODES.PRIVATE);
 #endif
       // compute time integated DOFs
+      word16 w_i_dT, w_i_dofs_current;
+      w_i_dT = word16(i_dT);
+
       for( int_el l_element = i_first; l_element < i_first+i_nElements; l_element++ ) {
         for( int_md l_mode = 0; l_mode < N_ELEMENT_MODES; l_mode++ ) {
 #pragma omp simd
           for( int_cfr l_run = 0; l_run < N_CRUNS; l_run++ ) {
             // o_tInt[l_element][0][l_mode][l_run] = i_dT*i_dofs[l_element][0][l_mode][l_run];
-            o_tInt[l_element][0][l_mode][l_run] = w2f(w_mul(
-                                                            f2w( i_dT), 
-                                                            f2w( i_dofs[l_element][0][l_mode][l_run])
-                                                            )
-                                                      );
 
-            
-            // printf("i_dT:      %.9f\n", i_dT);
-            // printf("i_dofs:    %.9f\n", i_dofs[l_element][0][l_mode][l_run]);
-            // printf("prod:      %.9f\n", i_dT*i_dofs[l_element][0][l_mode][l_run]);
-            // printf("approx:    %.9f\n", o_tInt[l_element][0][l_mode][l_run]);
-            // printf("Absolute:  %.9f\n", i_dT*i_dofs[l_element][0][l_mode][l_run] - o_tInt[l_element][0][l_mode][l_run]);
-            // printf("Relative:  %.9f\n\n", (i_dT*i_dofs[l_element][0][l_mode][l_run] - o_tInt[l_element][0][l_mode][l_run])/(i_dT*i_dofs[l_element][0][l_mode][l_run]));
+            w_i_dofs_current = word16(i_dofs[l_element][0][l_mode][l_run]);
+            o_tInt[l_element][0][l_mode][l_run] = (w_i_dT * w_i_dofs_current).toFloat();
+
+            // o_tInt[l_element][0][l_mode][l_run] = w2f(w_mul(
+            //                                                 f2w( i_dT), 
+            //                                                 f2w( i_dofs[l_element][0][l_mode][l_run])
+            //                                                 )
+            //                                           );
           }
         }
       }
@@ -103,6 +102,8 @@ class edge::advection::solvers::FiniteVolume {
       (void) __builtin_assume_aligned(io_dofs, ALIGNMENT.ELEMENT_MODES.PRIVATE);
 #endif
 
+      word16 w_io_dofs_current, w_i_fluxSolvers_cont, w_i_fluxSolvers_nbh, w_i_tInt_el, w_i_tInt_nbh;
+
       // iterate over elements
       for( int_el l_el = i_first; l_el < i_first+i_nElements; l_el++ ) {
           // fluxes
@@ -111,32 +112,37 @@ class edge::advection::solvers::FiniteVolume {
             int_el l_neigh = i_elFaEl[l_el][l_fa];
 
             for( int_cfr l_run = 0; l_run < N_CRUNS; l_run++ ) {
+              w_io_dofs_current = word16(io_dofs[l_el][0][0][l_run]);
+              w_i_fluxSolvers_cont = word16(i_fluxSolvers[l_el][l_fa]);
+              w_i_fluxSolvers_nbh = word16(i_fluxSolvers[l_el][C_ENT[T_SDISC.ELEMENT].N_FACES + l_fa]);
+              w_i_tInt_el = word16(i_tInt[l_el][0][0][l_run]);
+              w_i_tInt_nbh = word16(i_tInt[l_neigh][0][0][l_run]);
+
+              w_io_dofs_current += w_i_fluxSolvers_cont * w_i_tInt_el;
+              w_io_dofs_current += w_i_fluxSolvers_nbh * w_i_tInt_nbh;
+
+              io_dofs[l_el][0][0][l_run] = w_io_dofs_current.toFloat();
+
               // local cont
-              // printf("i_fluxSolvers[l_el][l_fa] = %f\n", i_fluxSolvers[l_el][l_fa]);
-              // printf("i_tInt[l_el][0][0][l_run] = %f\n", i_tInt[l_el][0][0][l_run]);
-              // printf("io_dofs[l_el][0][0][l_run] = %f\n\n", io_dofs[l_el][0][0][l_run]);
               // io_dofs[l_el][0][0][l_run] += i_fluxSolvers[l_el][l_fa] * i_tInt[l_el][0][0][l_run];
-              io_dofs[l_el][0][0][l_run] = w2f( w_add(
-                                                      f2w( io_dofs[l_el][0][0][l_run]), 
-                                                      w_mul(
-                                                        f2w( i_fluxSolvers[l_el][l_fa]), 
-                                                        f2w( i_tInt[l_el][0][0][l_run]))
-                                                      )
-                                              );
+              // io_dofs[l_el][0][0][l_run] = w2f( w_add(
+              //                                         f2w( io_dofs[l_el][0][0][l_run]), 
+              //                                         w_mul(
+              //                                           f2w( i_fluxSolvers[l_el][l_fa]), 
+              //                                           f2w( i_tInt[l_el][0][0][l_run]))
+              //                                         )
+              //                                 );
 
               // neighboring cont
-              // printf("i_fluxSolvers[l_el][C_ENT[T_SDISC.ELEMENT].N_FACES+l_fa] = %f\n", i_fluxSolvers[l_el][C_ENT[T_SDISC.ELEMENT].N_FACES+l_fa]);
-              // printf("i_tInt[l_neigh][0][0][l_run] = %f\n", i_tInt[l_neigh][0][0][l_run]);
-              // printf("io_dofs[l_el][0][0][l_run] = %f\n\n", io_dofs[l_el][0][0][l_run]);
-              // io_dofs[l_el][0][0][l_run] += i_fluxSolvers[l_el][C_ENT[T_SDISC.ELEMENT].N_FACES+l_fa] * i_tInt[l_neigh][0][0][l_run];
+             // io_dofs[l_el][0][0][l_run] += i_fluxSolvers[l_el][C_ENT[T_SDISC.ELEMENT].N_FACES+l_fa] * i_tInt[l_neigh][0][0][l_run];
 
-              io_dofs[l_el][0][0][l_run] = w2f( w_add(
-                                                      f2w( io_dofs[l_el][0][0][l_run]), 
-                                                      w_mul(
-                                                        f2w( i_fluxSolvers[l_el][C_ENT[T_SDISC.ELEMENT].N_FACES+l_fa]), 
-                                                        f2w( i_tInt[l_neigh][0][0][l_run]))
-                                                      )
-                                              );
+              // io_dofs[l_el][0][0][l_run] = w2f( w_add(
+              //                                         f2w( io_dofs[l_el][0][0][l_run]), 
+              //                                         w_mul(
+              //                                           f2w( i_fluxSolvers[l_el][C_ENT[T_SDISC.ELEMENT].N_FACES+l_fa]), 
+              //                                           f2w( i_tInt[l_neigh][0][0][l_run]))
+              //                                         )
+              //                                 );
             }
           }
       }

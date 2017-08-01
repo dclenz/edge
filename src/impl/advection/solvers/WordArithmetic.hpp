@@ -86,7 +86,14 @@ word f2w(float f){
 	// ************************
 
 	// // extract mantissa, add implicit bit & round, then truncate
-	// int16_t mantissa = ((f_b & 0x007FFFFF) + 0x00800100) >> (8 + 1);
+	// // int16_t mantissa = ((f_b & 0x007FFFFF) + 0x00800100) >> (8 + 1);
+
+	// // round to even:
+	// int32_t mantissa = (f_b & 0x007FFFFF) + 0x00800000;
+	// int b = mantissa & 0x00000200;
+	// int s = mantissa & 0x000000FF;
+	// mantissa += (b || s) << 8;
+	// mantissa >>= (8 + 1);
 
 	// // Adjust sign 
 	// // NOTE: Multiplication (or similar) is necessary to ensure that
@@ -103,7 +110,14 @@ word f2w(float f){
 	// **  Cast to 24b int
 	// *************************
 
-	int32_t mantissa = ((f_b & 0x007FFFFF) + 0x00800000) >> 1;	// Would rounding (instead of truncating) help here? probably doesn't matter
+	int32_t mantissa = ((f_b & 0x007FFFFF) + 0x00800000);
+
+	// round to even
+	int b = mantissa && 0x00000002;
+	mantissa += b;
+
+	mantissa >>= 1;
+
 	if (f_b & 0x80000000){
 		w.w24.m = -1 * mantissa;
 	}
@@ -117,6 +131,11 @@ word f2w(float f){
 
 float w2f(word w){
 	return w.w24.m*pow(2, w.w24.e - 14 - 8);
+
+	// round-to-even
+	// int b = w.w24.m & 0x000100;
+	// int s = w.w24.m & 0x00007F;
+	// w.w24.m += (b || s) << 7;
 	// return w.w16.m*pow(2, w.w16.e - 14);
 }
 
@@ -135,9 +154,11 @@ word w_add(word a, word b){
 
 	// Warning: No rounding before the (eventual?)
 	// truncation to 16 bits
+	// ??? checking for roundoff in 16th bit???
 	r.w24.e = 0;
 	r.w24.m = (a.w24.m) + (b.w24.m >> (e_diff));
 	if (((r.w16.m^a.w16.m)&(r.w16.m^b.w16.m))>>15){ // If the addition overflowed
+		r.w24.m += (r.w24.m & 0x000002) >> 1;		// Round to even
 		r.w24.m >>= 1;								// Then recover the 
 		r.w24.m ^= 0x800000;						//		overflowed bit (discarding low bit)
 		r.w24.e = 1;								// And increment exponent
@@ -185,8 +206,10 @@ word w_mul(word a, word b){
 
 	// Changed for storage into 24b m
 	//
-	// the addition here rounds half toward +inf
-	zm = (rm + 0x00000040) >> 7;
+	// round to even
+	int bb = rm & 0x00000080;
+	int s = rm & 0x0000003F;
+	zm = (rm + ((bb || s)<<6)) >> 7;
 	x = zm & 0x00FFFFFF;
 
 	r.w24.m = x;
