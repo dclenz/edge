@@ -168,6 +168,13 @@ vars.AddVariables(
                 '64',
                  allowed_values=('32', '64')
               ),
+  EnumVariable( 'fpi_precision',
+                'fixed point integer precision (bit)',
+                'no',
+                allowed_values=('no', '15', '16', '17', '18', '19', '20', '21',
+                  '22', '23', '24', '25', '26', '27', '28', '29', '30',
+                  '31')
+                ),
   EnumVariable( 'parallel',
                 'used parallelization',
                 'none',
@@ -369,6 +376,9 @@ env.Append( CPPDEFINES=['PP_ORDER='+env['order']] )
 
 # forward precision
 env.Append( CPPDEFINES=['PP_PRECISION='+env['precision']] )
+if env['fpi_precision']!='no':
+  env.Append( CPPDEFINES=['PP_FPI_ENABLED'])
+  env.Append( CPPDEFINES=['PP_FPI_PREC='+env['fpi_precision']] )
 
 # enable omp
 if 'omp' in env['parallel']:

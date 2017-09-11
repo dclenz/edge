@@ -22,7 +22,11 @@
  **/
 
 #if PP_ORDER==1
-#include "impl/advection/solvers/FiniteVolume.hpp"
+#  ifndef PP_FPI_ENABLED
+#  include "impl/advection/solvers/FiniteVolume.hpp"
+#  else
+#  include "impl/advection/solvers/FiniteVolumeFPI.hpp"
+#  endif
 #else
 #include "impl/advection/solvers/AderDg.hpp"
 #endif

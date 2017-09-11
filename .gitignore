@@ -4,3 +4,4 @@ config.log
 build/
 ghill_2d_wf/
 adv_tmpl
+output/

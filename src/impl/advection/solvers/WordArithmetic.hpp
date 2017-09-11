@@ -110,11 +110,13 @@ word f2w(float f){
 	// **  Cast to 24b int
 	// *************************
 
-	int32_t mantissa = ((f_b & 0x007FFFFF) + 0x00800000);
+
+	// Rounding Here
+	int32_t mantissa = ((f_b & 0x007FFFFF) + 0x00800001);
 
 	// round to even
-	int b = mantissa && 0x00000002;
-	mantissa += b;
+	// int b = mantissa && 0x00000002;
+	// mantissa += b;
 
 	mantissa >>= 1;
 
@@ -158,7 +160,8 @@ word w_add(word a, word b){
 	r.w24.e = 0;
 	r.w24.m = (a.w24.m) + (b.w24.m >> (e_diff));
 	if (((r.w16.m^a.w16.m)&(r.w16.m^b.w16.m))>>15){ // If the addition overflowed
-		r.w24.m += (r.w24.m & 0x000002) >> 1;		// Round to even
+		// r.w24.m += 0x000001;
+		// r.w24.m += (r.w24.m & 0x000002) >> 1;		// Round to even
 		r.w24.m >>= 1;								// Then recover the 
 		r.w24.m ^= 0x800000;						//		overflowed bit (discarding low bit)
 		r.w24.e = 1;								// And increment exponent
@@ -207,9 +210,10 @@ word w_mul(word a, word b){
 	// Changed for storage into 24b m
 	//
 	// round to even
-	int bb = rm & 0x00000080;
-	int s = rm & 0x0000003F;
-	zm = (rm + ((bb || s)<<6)) >> 7;
+	// int bb = rm & 0x00000080;
+	// int s = rm & 0x0000003F;
+	// zm = (rm + ((bb || s)<<6)) >> 7;
+	zm = (rm + 0x00000040) >> 7;
 	x = zm & 0x00FFFFFF;
 
 	r.w24.m = x;
