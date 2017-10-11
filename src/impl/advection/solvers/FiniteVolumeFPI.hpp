@@ -27,7 +27,12 @@
 #include <cassert>
 #include "constants.hpp"
 
+#ifndef PP_FPI_PREC
+#define PP_FPI_PREC 15
+#endif
+
 #include "WordArithmetic4.hpp"
+typedef wFloat<PP_FPI_PREC> fpi;
 
 namespace edge {
   namespace advection {
@@ -59,14 +64,14 @@ class edge::advection::solvers::FiniteVolume {
       (void) __builtin_assume_aligned(o_tInt, ALIGNMENT.ELEMENT_MODES.PRIVATE);
 #endif
       // compute time integated DOFs
-      wFloat w_i_dofs_current;
-      wFloat w_i_dT(i_dT);
+      fpi w_i_dofs_current;
+      fpi w_i_dT(i_dT);
 
       for( int_el l_element = i_first; l_element < i_first+i_nElements; l_element++ ) {
         for( int_md l_mode = 0; l_mode < N_ELEMENT_MODES; l_mode++ ) {
 #pragma omp simd
           for( int_cfr l_run = 0; l_run < N_CRUNS; l_run++ ) {
-            w_i_dofs_current = wFloat(i_dofs[l_element][0][l_mode][l_run]);
+            w_i_dofs_current = fpi(i_dofs[l_element][0][l_mode][l_run]);
             o_tInt[l_element][0][l_mode][l_run] = (w_i_dT * w_i_dofs_current).toFloat();
           }
         }
@@ -95,7 +100,7 @@ class edge::advection::solvers::FiniteVolume {
       (void) __builtin_assume_aligned(io_dofs, ALIGNMENT.ELEMENT_MODES.PRIVATE);
 #endif
 
-      wFloat w_io_dofs_current, w_i_fluxSolvers_cont, w_i_fluxSolvers_nbh, w_i_tInt_el, w_i_tInt_nbh;
+      fpi w_io_dofs_current, w_i_fluxSolvers_cont, w_i_fluxSolvers_nbh, w_i_tInt_el, w_i_tInt_nbh;
 
       // iterate over elements
       for( int_el l_el = i_first; l_el < i_first+i_nElements; l_el++ ) {
@@ -106,11 +111,11 @@ class edge::advection::solvers::FiniteVolume {
 
             for( int_cfr l_run = 0; l_run < N_CRUNS; l_run++ ) {
               // Convert to FPI
-              w_io_dofs_current = wFloat(io_dofs[l_el][0][0][l_run]);
-              w_i_fluxSolvers_cont = wFloat(i_fluxSolvers[l_el][l_fa]);
-              w_i_fluxSolvers_nbh = wFloat(i_fluxSolvers[l_el][C_ENT[T_SDISC.ELEMENT].N_FACES + l_fa]);
-              w_i_tInt_el = wFloat(i_tInt[l_el][0][0][l_run]);
-              w_i_tInt_nbh = wFloat(i_tInt[l_neigh][0][0][l_run]);
+              w_io_dofs_current = fpi(io_dofs[l_el][0][0][l_run]);
+              w_i_fluxSolvers_cont = fpi(i_fluxSolvers[l_el][l_fa]);
+              w_i_fluxSolvers_nbh = fpi(i_fluxSolvers[l_el][C_ENT[T_SDISC.ELEMENT].N_FACES + l_fa]);
+              w_i_tInt_el = fpi(i_tInt[l_el][0][0][l_run]);
+              w_i_tInt_nbh = fpi(i_tInt[l_neigh][0][0][l_run]);
 
               // Update
               w_io_dofs_current += w_i_fluxSolvers_cont * w_i_tInt_el;          

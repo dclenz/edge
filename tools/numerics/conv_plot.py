@@ -264,7 +264,7 @@ for l_enorm in ['l1', 'l2', 'linf']:
                               color=l_style['color'][l_char[l_enorm][l_config]['cfr']]  )
 
   # output data to file
-  outfilename = "adv_line/xy_data_" + str(l_enorm)
+  outfilename = l_arguments['xdir'] + "/../conv_data_" + str(l_enorm)
   outfile = open(outfilename, 'w')
   plotdata = matplotlib.pyplot.gca().get_lines()[0].get_xydata()
   for pair in plotdata:
